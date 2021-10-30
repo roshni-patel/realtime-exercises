@@ -16,12 +16,46 @@ chat.addEventListener("submit", function (e) {
 
 async function postNewMsg(user, text) {
   // post to /poll a new message
-  // write code here
+  const data = {
+    user,
+    text
+  };
+
+  const options = {
+    method: "POST", 
+    body: JSON.stringify(data),
+    headers: {
+      "Content-Type": "application/json"
+    }
+  }
+
+  await fetch("/poll", options)
+  // changed to above which is more concise 
+  // const res = await fetch("/poll", options);
+  // const json = await res.json(); 
 }
 
-async function getNewMsgs() {
+async function getNewMsgs() { // allows us to use await keyword
   // poll the server
-  // write code here
+  let json;
+  try { 
+    const res = await fetch("/poll");
+    json = await res.json();
+
+    if (res.status >= 400) {
+      throw new Error("request did not succeed: ", + res.status);
+    }
+
+    allChat = json.msg; 
+    render();
+    failedTries = 0; 
+  } catch (e) {
+    // backoff code 
+    console.error("polliing error", e);
+    failedTries++;
+  }
+
+  // setTimeout(getNewMsgs, INTERVAL); // set interval runs function 3 seconds no matter what, this will do all this first and last thing it does is call setTimeout
 }
 
 function render() {
@@ -37,5 +71,19 @@ function render() {
 const template = (user, msg) =>
   `<li class="collection-item"><span class="badge">${user}</span>${msg}</li>`;
 
-// make the first request
-getNewMsgs();
+// make the first request - removed during polling with requestAnimationFrame lecture
+// getNewMsgs();
+const BACKOFF = 5000; 
+let timeToMakeNextRequest = 0;
+let failedTries = 0;
+// every time the browser is idle, won't interrupt browser unlike set timeout
+async function raftTimer(time) { // time from request animation frame
+  if (timeToMakeNextRequest <= time ) {
+    await getNewMsgs();
+    timeToMakeNextRequest = time + INTERVAL + failedTries * BACKOFF; // linear backoff
+  }
+
+  requestAnimationFrame(raftTimer);
+}
+
+requestAnimationFrame(raftTimer);
