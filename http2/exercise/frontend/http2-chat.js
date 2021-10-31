@@ -32,11 +32,43 @@ async function postNewMsg(user, text) {
 }
 
 async function getNewMsgs() {
-  /*
-   *
-   * code goes here
-   *
-   */
+  let reader;
+  const utf8Decoder = new TextDecoder("utf-8");
+  try {
+    const res = await fetch("/msgs");
+    reader = res.body.getReader(); // readable text stream
+  } catch (e) {
+    console.log("connection error", e);
+  }
+  let done; 
+  presence.innerText = '🟢';
+  
+  do {
+    let readerResponse;
+    try {
+      readerResponse = await reader.read(); // wait here until api sends me something new back
+    } catch (e) {
+      console.error("reader fail", e)
+      presence.innerText = '🔴';
+      return; 
+    }
+    done = readerResponse.done;
+    const chunk = utf8Decoder.decode(readerResponse.value, { stream: true });
+
+    if (chunk) {
+      try {
+        const json = JSON.parse(chunk); // messages back from server 
+        allChat = json.msg;
+        render();
+      } catch (e) {
+        console.error('parse error', e);
+      }
+    }
+    console.log("done", done);
+  } while (!done); 
+  // in theory, if our http2 connection closed, `done` would come back
+  // as true and we'd no longer be connected
+  presence.innerText = '🔴'; // if while loop finished then disconnected 
 }
 
 function render() {
