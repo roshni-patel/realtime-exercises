@@ -11,14 +11,28 @@ chat.addEventListener("submit", function (e) {
 });
 
 async function postNewMsg(user, text) {
-  // code goes here
+  const data = { user, text };
+
+  ws.send(JSON.stringify(data));
 }
 
-/*
- *
- * your code goes here
- *
- */
+const ws = new WebSocket("ws://localhost:8080", ["json"]) // create object
+// connect to server via HTTP at some endpoint, hey endpoint I want to upgrade this connection, up to server what does upgrade mean
+// send an upgrade request, cool I know how to speak websocket then will connect
+ws.addEventListener("open", () => {
+  console.log("connected")
+  presence.innerText = "🟢"
+});
+
+ws.addEventListener("message", (event) => {
+  const data = JSON.parse(event.data);
+  allChat = data.msg;
+  render();
+});
+
+ws.addEventListener("close", () => {
+  presence.innerText = "🔴";
+})
 
 function render() {
   const html = allChat.map(({ user, text }) => template(user, text));
